@@ -200,9 +200,22 @@ void strassen(int **A, int **B, int **C, int n)
     free(temp2);
 }
 
-int main()
+int isPowerOfTwo(int x) {
+    return (x > 0) && ((x & (x - 1)) == 0);
+}
+
+int main(int argc, char *argv[])
 {
-    int n = 4; // Example size (must be a power of 2)
+     if (argc < 2) {
+        printf("Usage: %s <matrix size>\n", argv[0]);
+        return 1;
+    }
+    int n = atoi(argv[1]);
+
+    if (!isPowerOfTwo(n)) {
+        printf("Error: The matrix size must be a power of 2.\n");
+        return 1;
+    }
     int **A, **B, **C;
 
     // Allocate memory for matrices A, B, and C
@@ -222,8 +235,8 @@ int main()
     {
         for (int j = 0; j < n; j++)
         {
-            A[i][j] = i + j; // Example initialization
-            B[i][j] = i - j; // Example initialization
+            A[i][j] = i + j; 
+            B[i][j] = i - j; 
             printf("%d ", A[i][j]);
         }
         printf("\n");
