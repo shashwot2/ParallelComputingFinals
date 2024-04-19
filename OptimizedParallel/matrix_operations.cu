@@ -13,7 +13,7 @@ __global__ void matrixMultiplyKernel(int *A, int *B, int *C, int n) {
     }
 }
 
-void performMatrixMultiplicationCUDA(int *h_A, int *h_B, int *h_C, int n) {
+void cudaMatrixMultiply(int *h_A, int *h_B, int *h_C, int n) {
     int *d_A, *d_B, *d_C;
     size_t size = n * n * sizeof(int);
 
