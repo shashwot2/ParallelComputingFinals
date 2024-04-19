@@ -1,59 +1,71 @@
 #include <mpi.h>
-#include <cuda_runtime.h>
 #include <stdio.h>
+#include <stdlib.h>
 
-extern void cudaMatrixMultiply(int *subA, int *B, int *subC, int n, int size, int rank);
+extern void performMatrixMultiplication(int *h_A, int *h_B, int *h_C, int N);
+void printMatrix(const char *name, int *matrix, int rows, int cols)
+{
+    printf("%s:\n", name);
+    for (int i = 0; i < rows; i++)
+    {
+        for (int j = 0; j < cols; j++)
+        {
+            printf("%5d ", matrix[i * cols + j]);
+        }
+        printf("\n");
+    }
+}
 
-int main(int argc, char *argv[]) {
+int main(int argc, char *argv[])
+{
     MPI_Init(&argc, &argv);
 
     int rank, size;
+    rank = 2;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    int n = 1024; 
-    int rows = n / size; 
+    int N = 4;
+    int *A, *B, *C;
+    int *subA, *subC;
+    int rows_per_process = N / size;
 
-    int *subA, *B, *subC;
-    cudaMallocManaged(&subA, rows * n * sizeof(int));
-    cudaMallocManaged(&B, n * n * sizeof(int));
-    cudaMallocManaged(&subC, rows * n * sizeof(int));
+    if (rank == 0)
+    {
+        A = (int *)malloc(N * N * sizeof(int));
+        B = (int *)malloc(N * N * sizeof(int));
+        C = (int *)malloc(N * N * sizeof(int));
 
-    MPI_File fh_A, fh_B, fh_C;
-    MPI_Status status;
-
-    MPI_File_open(MPI_COMM_WORLD, "matrix_A.dat", MPI_MODE_RDONLY, MPI_INFO_NULL, &fh_A);
-    MPI_File_open(MPI_COMM_WORLD, "matrix_B.dat", MPI_MODE_RDONLY, MPI_INFO_NULL, &fh_B);
-
-    MPI_Offset offset_A = rank * rows * n * sizeof(int);
-    MPI_Offset offset_B = 0;
-
-    MPI_File_read_at(fh_A, offset_A, subA, rows * n, MPI_INT, &status);
-
-    MPI_File_read_at_all(fh_B, offset_B, B, n * n, MPI_INT, &status);
-
-    MPI_File_close(&fh_A);
-    MPI_File_close(&fh_B);
-
-    cudaMatrixMultiply(subA, B, subC, n, size, rank);
-
-    if (rank == 0) {
-        int *C;
-        cudaMallocManaged(&C, n * n * sizeof(int));
-        MPI_Gather(subC, rows * n, MPI_INT, C, rows * n, MPI_INT, 0, MPI_COMM_WORLD);
-
-        MPI_File_open(MPI_COMM_SELF, "matrix_C.dat", MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh_C);
-        MPI_File_write(fh_C, C, n * n, MPI_INT, &status);
-        MPI_File_close(&fh_C);
-
-        cudaFree(C);
-    } else {
-        MPI_Gather(subC, rows * n, MPI_INT, NULL, 0, MPI_INT, 0, MPI_COMM_WORLD);
+        for (int i = 0; i < N * N; i++)
+        {
+            A[i] = rand() % 100;
+            B[i] = rand() % 100;
+        }
     }
 
-    cudaFree(subA);
-    cudaFree(B);
-    cudaFree(subC);
+    subA = (int *)malloc(rows_per_process * N * sizeof(int));
+    subC = (int *)malloc(rows_per_process * N * sizeof(int));
+
+    MPI_Scatter(A, rows_per_process * N, MPI_INT, subA, rows_per_process * N, MPI_INT, 0, MPI_COMM_WORLD);
+    MPI_Bcast(B, N * N, MPI_INT, 0, MPI_COMM_WORLD);
+
+    performMatrixMultiplication(subA, B, subC, N);
+
+    MPI_Gather(subC, rows_per_process * N, MPI_INT, C, rows_per_process * N, MPI_INT, 0, MPI_COMM_WORLD);
+
+    if (rank == 0)
+    {
+        printMatrix("Matrix A", A, N, N);
+        printMatrix("Matrix B", B, N, N);
+        printMatrix("Matrix C", C, N, N);
+
+        free(A);
+        free(B);
+        free(C);
+    }
+
+    free(subA);
+    free(subC);
 
     MPI_Finalize();
     return 0;

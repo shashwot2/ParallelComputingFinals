@@ -30,7 +30,6 @@ void strassen(int **A, int **B, int **C, int n)
     int **M1, **M2, **M3, **M4, **M5, **M6, **M7;
     int **temp1, **temp2;
 
-    // Dynamic memory allocation for all submatrices and temporary matrices
     A11 = (int **)malloc(new_size * sizeof(int *));
     A12 = (int **)malloc(new_size * sizeof(int *));
     A21 = (int **)malloc(new_size * sizeof(int *));
