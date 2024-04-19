@@ -23,8 +23,8 @@ void generateAndWriteMatrix(const char* filename, int N) {
 
 int main() {
     int N = 4;  
-    generateAndWriteMatrix("matrix_A.bin", N);
-    generateAndWriteMatrix("matrix_B.bin", N);
+    generateAndWriteMatrix("../matrix_A.bin", N);
+    generateAndWriteMatrix("../matrix_B.bin", N);
 
     return 0;
 }

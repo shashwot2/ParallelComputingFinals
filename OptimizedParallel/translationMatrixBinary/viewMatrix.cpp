@@ -32,8 +32,9 @@ void readAndPrintMatrix(const char* filename, int N) {
 int main() {
     int N = 4; 
 
-    readAndPrintMatrix("matrix_A.bin", N);
-    readAndPrintMatrix("matrix_B.bin", N);
+    readAndPrintMatrix("../matrix_A.bin", N);
+    readAndPrintMatrix("../matrix_B.bin", N);
+    readAndPrintMatrix("../matrix_C.bin", N);
 
     return 0;
 }
