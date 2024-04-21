@@ -2,18 +2,27 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-extern void performMatrixMultiplication(int *h_A, int *h_B, int *h_C, int N);
-void printMatrix(const char *name, int *matrix, int rows, int cols)
+extern void performMatrixMultiplication(int *subA, int *B, int *subC, int N, int threadsPerBlock);
+
+void readMatrixMPIIO(const char *filename, int *matrix, int startRow, int numRows, int totalSize, MPI_Comm comm)
 {
-    printf("%s:\n", name);
-    for (int i = 0; i < rows; i++)
-    {
-        for (int j = 0; j < cols; j++)
-        {
-            printf("%5d ", matrix[i * cols + j]);
-        }
-        printf("\n");
-    }
+    MPI_File fh;
+    MPI_Status status;
+    MPI_File_open(comm, filename, MPI_MODE_RDONLY, MPI_INFO_NULL, &fh);
+    MPI_File_seek(fh, sizeof(int) * startRow * totalSize, MPI_SEEK_SET);
+    MPI_File_read(fh, matrix, numRows * totalSize, MPI_INT, &status);
+    MPI_File_close(&fh);
+}
+
+void writeMatrixMPIIO(const char *filename, int *matrix, int startRow, int numRows, int totalSize, MPI_Comm comm)
+{
+    MPI_File fh;
+    MPI_Status status;
+    MPI_Offset offset = sizeof(int) * startRow * totalSize;
+
+    MPI_File_open(comm, filename, MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh);
+    MPI_File_write_at_all(fh, offset, matrix, numRows * totalSize, MPI_INT, &status);
+    MPI_File_close(&fh);
 }
 
 int main(int argc, char *argv[])
@@ -21,50 +30,50 @@ int main(int argc, char *argv[])
     MPI_Init(&argc, &argv);
 
     int rank, size;
-    rank = 2;
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
-    int N = 4;
-    int *A, *B, *C;
-    int *subA, *subC;
-    int rows_per_process = N / size;
-
-    if (rank == 0)
+    if (argc != 4)
     {
-        A = (int *)malloc(N * N * sizeof(int));
-        B = (int *)malloc(N * N * sizeof(int));
-        C = (int *)malloc(N * N * sizeof(int));
-
-        for (int i = 0; i < N * N; i++)
+        if (rank == 0)
         {
-            A[i] = rand() % 100;
-            B[i] = rand() % 100;
+            fprintf(stderr, "Usage: %s <matrix_size> <threads_per_block> <file_prefix>\n", argv[0]);
         }
+        MPI_Abort(MPI_COMM_WORLD, 1);
     }
 
-    subA = (int *)malloc(rows_per_process * N * sizeof(int));
-    subC = (int *)malloc(rows_per_process * N * sizeof(int));
+    int N = atoi(argv[1]);
+    int threadsPerBlock = atoi(argv[2]);
+    char *file_prefix = argv[3];
 
-    MPI_Scatter(A, rows_per_process * N, MPI_INT, subA, rows_per_process * N, MPI_INT, 0, MPI_COMM_WORLD);
-    MPI_Bcast(B, N * N, MPI_INT, 0, MPI_COMM_WORLD);
-
-    performMatrixMultiplication(subA, B, subC, N);
-
-    MPI_Gather(subC, rows_per_process * N, MPI_INT, C, rows_per_process * N, MPI_INT, 0, MPI_COMM_WORLD);
-
-    if (rank == 0)
+    if (N % size != 0)
     {
-        printMatrix("Matrix A", A, N, N);
-        printMatrix("Matrix B", B, N, N);
-        printMatrix("Matrix C", C, N, N);
-
-        free(A);
-        free(B);
-        free(C);
+        if (rank == 0)
+        {
+            fprintf(stderr, "Matrix size %d must be divisible by number of processes %d.\n", N, size);
+        }
+        MPI_Abort(MPI_COMM_WORLD, 1);
     }
+
+    int rows_per_process = N / size;
+    int *subA = (int *)calloc(rows_per_process * N, sizeof(int));
+    int *B = (int *)calloc(N * N, sizeof(int));
+    int *subC = (int *)calloc(rows_per_process * N, sizeof(int));
+
+    char filenameA[100], filenameB[100], filenameC[100];
+    sprintf(filenameA, "%s_A.bin", file_prefix);
+    sprintf(filenameB, "%s_B.bin", file_prefix);
+    sprintf(filenameC, "%s_C.bin", file_prefix);
+
+    readMatrixMPIIO(filenameA, subA, rank * rows_per_process, rows_per_process, N, MPI_COMM_WORLD);
+    readMatrixMPIIO(filenameB, B, 0, N, N, MPI_COMM_WORLD);
+
+    performMatrixMultiplication(subA, B, subC, N, threadsPerBlock);
+
+    writeMatrixMPIIO(filenameC, subC, rank * rows_per_process, rows_per_process, N, MPI_COMM_WORLD);
 
     free(subA);
+    free(B);
     free(subC);
 
     MPI_Finalize();

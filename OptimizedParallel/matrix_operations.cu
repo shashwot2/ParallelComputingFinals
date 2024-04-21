@@ -15,7 +15,8 @@ __global__ void matrixMultiplyNaive(int *A, int *B, int *C, int n)
     }
 }
 
-extern "C" void performMatrixMultiplication(int *h_A, int *h_B, int *h_C, int N) {
+extern "C" void performMatrixMultiplication(int *h_A, int *h_B, int *h_C, int N, int threadsPerBlock)
+{
     int *d_A, *d_B, *d_C;
     size_t size = N * N * sizeof(int);
 
@@ -26,12 +27,11 @@ extern "C" void performMatrixMultiplication(int *h_A, int *h_B, int *h_C, int N)
     cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice);
     cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice);
 
-    dim3 threadsPerBlock(16, 16);
-    dim3 numBlocks((N + threadsPerBlock.x - 1) / threadsPerBlock.x, 
-                   (N + threadsPerBlock.y - 1) / threadsPerBlock.y);
+    int threadsPerSide = sqrt(threadsPerBlock);
+    dim3 threads(threadsPerSide, threadsPerSide);
+    dim3 blocks((N + threads.x - 1) / threads.x, (N + threads.y - 1) / threads.y);
 
-    matrixMultiplyNaive<<<numBlocks, threadsPerBlock>>>(d_A, d_B, d_C, N);
-
+    matrixMultiplyNaive<<<blocks, threads>>>(d_A, d_B, d_C, N);
     cudaGetLastError();
     cudaDeviceSynchronize();
 
