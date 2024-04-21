@@ -52,3 +52,10 @@ Mkfile.old
 dkms.conf
 main
 OptimizedParallel/program
+OptimizedParallel/matrix_A.bin
+OptimizedParallel/matrix_B.bin
+OptimizedParallel/matrix_C.bin
+OptimizedParallel/translationMatrixBinary/generate_matrices
+OptimizedParallel/translationMatrixBinary/ViewMatrices
+OptimizedParallel/withoutIO/highlife-MPI-CUDA-exe
+OptimizedParallel/withoutIO/matrix_multiply
