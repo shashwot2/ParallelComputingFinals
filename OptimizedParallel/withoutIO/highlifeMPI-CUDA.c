@@ -1,45 +1,59 @@
+#define N 4
 #include <stdio.h>
+#include <math.h>
+#include <sys/time.h>
 #include <stdlib.h>
-#include <mpi.h>
-#include <cuda_runtime.h>
+#include <stddef.h>
+#include "mpi.h"
 
-extern void performMatrixMultiplication(int *A, int *B, int *C, int N);
+extern void matrixMulCUDA(int *a, int *b, int *c, int width, int local_width);
+void print_results(char *prompt, int a[N][N]);
 
-int main(int argc, char *argv[]) {
-    int rank, size;
+int main(int argc, char *argv[])
+{
+    int i, j, rank, size, tag = 99;
+    int a[N][N]={{1,2,3,4},{5,6,7,8},{9,1,2,3},{4,5,6,7}};
+    int b[N][N]={{1,2,3,4},{5,6,7,8},{9,1,2,3},{4,5,6,7}};
+    int c[N][N];
+    int aa[N*N/4], cc[N*N/4];
+
     MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-    int N = 8;  
-    int *a, *b, *c;
-    a = (int *)malloc(N * N * sizeof(int));
-    b = (int *)malloc(N * N * sizeof(int));
-    c = (int *)malloc(N * N * sizeof(int));
+    // Scatter rows of first matrix to different processes
+    MPI_Scatter(a, N*N/size, MPI_INT, aa, N*N/size, MPI_INT, 0, MPI_COMM_WORLD);
 
-    for (int i = 0; i < N; i++) {
-        for (int j = 0; j < N; j++) {
-            a[i * N + j] = 5; 
-            b[i * N + j] = 5;
-        }
-    }
+    // Broadcast second matrix to all processes
+    MPI_Bcast(b, N*N, MPI_INT, 0, MPI_COMM_WORLD);
 
-    performMatrixMultiplication(a, b, c, N);
+    MPI_Barrier(MPI_COMM_WORLD);
+
+    // Perform matrix multiplication using CUDA kernel
+    matrixMulCUDA(aa, (int *)b, cc, N, N/size);
+
+    MPI_Gather(cc, N*N/size, MPI_INT, c, N*N/size, MPI_INT, 0, MPI_COMM_WORLD);
+
+    MPI_Barrier(MPI_COMM_WORLD);
+    MPI_Finalize();
 
     if (rank == 0) {
-        printf("Result Matrix C:\n");
-        for (int i = 0; i < N; i++) {
-            for (int j = 0; j < N; j++) {
-                printf("%d ", c[i * N + j]);
-            }
-            printf("\n");
-        }
+        print_results("C = ", c);
     }
 
-    free(a);
-    free(b);
-    free(c);
-
-    MPI_Finalize();
     return 0;
+}
+
+void print_results(char *prompt, int a[N][N])
+{
+    int i, j;
+
+    printf ("\n\n%s\n", prompt);
+    for (i = 0; i < N; i++) {
+        for (j = 0; j < N; j++) {
+            printf(" %d", a[i][j]);
+        }
+        printf ("\n");
+    }
+    printf ("\n\n");
 }

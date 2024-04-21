@@ -59,3 +59,9 @@ OptimizedParallel/translationMatrixBinary/generate_matrices
 OptimizedParallel/translationMatrixBinary/ViewMatrices
 OptimizedParallel/withoutIO/highlife-MPI-CUDA-exe
 OptimizedParallel/withoutIO/matrix_multiply
+OptimizedParallel/withIO/highlife-MPI-CUDA-exe
+OptimizedParallel/withIO/matrix_a.dat
+OptimizedParallel/withIO/result_matrix_c.dat
+OptimizedParallel/withIO/viewmatrix
+OptimizedParallel/withIO/matrix_b.dat
+OptimizedParallel/withIO/matrix_c.dat
