@@ -1,24 +1,20 @@
-CC=mpicc
-NVCC=nvcc
-CUDA_PATH=/usr/local/cuda/lib64
+CC = mpicc
+NVCC = nvcc
+CUDA_PATH = /usr/local/cuda
 
-OBJS=main.o matrix_operations.o
+CFLAGS = -I$(CUDA_PATH)/include
+LFLAGS = -L$(CUDA_PATH)/lib64 -lcudart -lm
 
-CFLAGS=-I/usr/local/cuda/include
-LDFLAGS=-L$(CUDA_PATH) -lcudart
+all: program
 
-EXEC=program
-
-all: $(EXEC)
-
-$(EXEC): $(OBJS)
-	$(CC) -o $@ $^ $(LDFLAGS)
+program: main.o matrix_operations.o
+	$(CC) -o program main.o matrix_operations.o $(LFLAGS)
 
 main.o: main.c
-	$(CC) -c $< $(CFLAGS)
+	$(CC) -c main.c $(CFLAGS)
 
 matrix_operations.o: matrix_operations.cu
-	$(NVCC) -c $< $(CFLAGS)
+	$(NVCC) -c matrix_operations.cu $(CFLAGS)
 
 clean:
-	rm -f $(OBJS) $(EXEC)
+	rm -f *.o program

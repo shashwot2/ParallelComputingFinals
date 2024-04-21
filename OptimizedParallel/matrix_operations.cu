@@ -19,7 +19,7 @@ extern "C" void performMatrixMultiplication(int *h_A, int *h_B, int *h_C, int N,
 {
     int *d_A, *d_B, *d_C;
     size_t size = N * N * sizeof(int);
-    int rows_per_process = N / size;
+
     cudaMalloc((void **)&d_A, size);
     cudaMalloc((void **)&d_B, size);
     cudaMalloc((void **)&d_C, size);
@@ -27,9 +27,9 @@ extern "C" void performMatrixMultiplication(int *h_A, int *h_B, int *h_C, int N,
     cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice);
     cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice);
 
-    dim3 threads(16, 16);
-    dim3 blocks((N + threads.x - 1) / threads.x, (rows_per_process + threads.y - 1) / threads.y);
-
+    int threadsPerSide = sqrt(threadsPerBlock);
+    dim3 threads(threadsPerSide, threadsPerSide);
+    dim3 blocks((N + threads.x - 1) / threads.x, (N + threads.y - 1) / threads.y);
 
     matrixMultiplyNaive<<<blocks, threads>>>(d_A, d_B, d_C, N);
     cudaGetLastError();
