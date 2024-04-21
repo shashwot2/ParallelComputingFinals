@@ -1,46 +1,71 @@
 #include <cuda_runtime.h>
 #include <stdio.h>
-__global__ void matrixMultiplyNaive(int *a, int *b, int *c, int width) {
-    int k, sum = 0;
-    int col = threadIdx.x + blockDim.x * blockIdx.x;
-    int row = threadIdx.y + blockDim.y * blockIdx.y;
 
-    if (col < width && row < width) {
-        for (k = 0; k < width; k++) {
+__global__ void matrixMulKernel(int *a, int* b, int *c, int width, int local_width) {
+    int row = blockIdx.y * blockDim.y + threadIdx.y;
+    int col = blockIdx.x * blockDim.x + threadIdx.x;
+
+    if (row < local_width && col < width) {
+        int sum = 0;
+        for (int k = 0; k < width; k++) {
             sum += a[row * width + k] * b[k * width + col];
         }
         c[row * width + col] = sum;
     }
 }
 
+extern "C" void matrixMulCUDA(int *h_a, int* h_b, int *h_c, int width, int local_width) {
+    int *d_a, *d_b, *d_c;
+    cudaError_t err;
 
-extern "C" void performMatrixMultiplication(int *h_A, int *h_B, int *h_C, int N) {
-    int *d_A, *d_B, *d_C;
-    size_t size = N * N * sizeof(int);
-
-    cudaMalloc((void **)&d_A, size);
-    cudaMalloc((void **)&d_B, size);
-    cudaMalloc((void **)&d_C, size);
-
-    cudaMemcpy(d_A, h_A, size, cudaMemcpyHostToDevice);
-    cudaMemcpy(d_B, h_B, size, cudaMemcpyHostToDevice);
-
-    dim3 threadsPerBlock(16, 16);
-    dim3 numBlocks((N + threadsPerBlock.x - 1) / threadsPerBlock.x,
-                   (N + threadsPerBlock.y - 1) / threadsPerBlock.y);
-
-    matrixMultiplyNaive<<<numBlocks, threadsPerBlock>>>(d_A, d_B, d_C, N);
-
-    cudaError_t err = cudaGetLastError();
+    err = cudaMalloc((void **)&d_a, local_width * width * sizeof(int));
     if (err != cudaSuccess) {
-        fprintf(stderr, "CUDA Kernel Error: %s\n", cudaGetErrorString(err));
+        fprintf(stderr, "Failed to allocate device memory for matrix A (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
     }
 
-    cudaDeviceSynchronize();
+    err = cudaMalloc((void **)&d_b, width * width * sizeof(int));
+    if (err != cudaSuccess) {
+        fprintf(stderr, "Failed to allocate device memory for matrix B (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
 
-    cudaMemcpy(h_C, d_C, size, cudaMemcpyDeviceToHost);
+    err = cudaMalloc((void **)&d_c, local_width * width * sizeof(int));
+    if (err != cudaSuccess) {
+        fprintf(stderr, "Failed to allocate device memory for matrix C (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
 
-    cudaFree(d_A);
-    cudaFree(d_B);
-    cudaFree(d_C);
+    err = cudaMemcpy(d_a, h_a, local_width * width * sizeof(int), cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "Failed to copy matrix A from host to device (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = cudaMemcpy(d_b, h_b, width * width * sizeof(int), cudaMemcpyHostToDevice);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "Failed to copy matrix B from host to device (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    dim3 threadsPerBlock(16, 16);
+    dim3 numBlocks((width + threadsPerBlock.x - 1) / threadsPerBlock.x,
+                   (local_width + threadsPerBlock.y - 1) / threadsPerBlock.y);
+
+    matrixMulKernel<<<numBlocks, threadsPerBlock>>>(d_a, d_b, d_c, width, local_width);
+    err = cudaGetLastError();
+    if (err != cudaSuccess) {
+        fprintf(stderr, "Failed to launch matrix multiplication kernel (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    err = cudaMemcpy(h_c, d_c, local_width * width * sizeof(int), cudaMemcpyDeviceToHost);
+    if (err != cudaSuccess) {
+        fprintf(stderr, "Failed to copy matrix C from device to host (error code %s)!\n", cudaGetErrorString(err));
+        exit(EXIT_FAILURE);
+    }
+
+    cudaFree(d_a);
+    cudaFree(d_b);
+    cudaFree(d_c);
 }
