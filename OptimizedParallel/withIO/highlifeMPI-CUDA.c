@@ -2,15 +2,23 @@
 #include <stdlib.h>
 #include <mpi.h>
 
-#define N 4 // Define matrix size
-
+int N= 4;
 void print_results(char *prompt, int *a, int rows, int cols);
-extern void matrixMulCUDA(int *a, int *b, int *c, int width, int local_width);
+extern void matrixMulCUDA(int *a, int *b, int *c, int width, int local_width, int threads);
 
 int main(int argc, char *argv[])
 {
+    // IMPORTANT PLEASE READ: The matrix size is hardcoded here
+    // Matrix size actually shouldn't be defined here in input withIO because the size works from reading the input file directly
     int rank, size;
     MPI_Init(&argc, &argv);
+    if (argc != 2)
+    {
+        fprintf(stderr, "Usage: %s <matrixsize> <threads>\n", argv[0]);
+        MPI_Abort(MPI_COMM_WORLD, 1);
+    }
+    N = atoi(argv[1]);
+    int threads = atoi(argv[2]);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
 
@@ -59,9 +67,12 @@ int main(int argc, char *argv[])
     matrixMulCUDA(aa, bb, cc, N, send_counts[rank] / N);
 
     // Printing results
+    if (N <= 12)
+    {
+    print_results(prompt, cc, send_counts[rank] / N, N);
     char prompt[100];
     sprintf(prompt, "Result Matrix on Process %d:", rank);
-    print_results(prompt, cc, send_counts[rank] / N, N);
+    }
     MPI_File_open(MPI_COMM_WORLD, "result_matrix.dat", MPI_MODE_CREATE | MPI_MODE_WRONLY, MPI_INFO_NULL, &fh_c);
     MPI_File_write_at_all(fh_c, displs[rank] * sizeof(int), cc, send_counts[rank], MPI_INT, MPI_STATUS_IGNORE);
     MPI_File_close(&fh_c);
