@@ -14,7 +14,7 @@ __global__ void matrixMulKernel(int *a, int *b, int *c, int width, int local_wid
     }
 }
 
-extern "C" void matrixMulCUDA(int *h_a, int *h_b, int *h_c, int width, int local_width) {
+extern "C" void matrixMulCUDA(int *h_a, int *h_b, int *h_c, int width, int local_width, int threadSize) {
     int *d_a, *d_b, *d_c;
     cudaMalloc((void **)&d_a, local_width * width * sizeof(int));
     cudaMalloc((void **)&d_b, width * width * sizeof(int));
@@ -23,7 +23,7 @@ extern "C" void matrixMulCUDA(int *h_a, int *h_b, int *h_c, int width, int local
     cudaMemcpy(d_a, h_a, local_width * width * sizeof(int), cudaMemcpyHostToDevice);
     cudaMemcpy(d_b, h_b, width * width * sizeof(int), cudaMemcpyHostToDevice);
 
-    dim3 threadsPerBlock(16, 16);
+    dim3 threadsPerBlock(threadSize, threadSize);
     dim3 numBlocks((width + threadsPerBlock.x - 1) / threadsPerBlock.x,
                    (local_width + threadsPerBlock.y - 1) / threadsPerBlock.y);
 

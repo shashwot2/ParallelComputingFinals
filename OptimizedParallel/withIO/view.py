@@ -1,6 +1,6 @@
 import numpy as np
 
-N = 4  
+N = 8 
 filenameinput1 = 'matrix_a.dat'
 filenameinput2 = 'matrix_b.dat'
 filename = 'result_matrix.dat'
