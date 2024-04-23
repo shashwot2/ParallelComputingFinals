@@ -71,3 +71,8 @@ OptimizedParallel/translationMatrixBinary/matrix_A.bin
 OptimizedParallel/translationMatrixBinary/matrix_B.bin
 OptimizedParallel/translationMatrixBinary/ViewMatrices
 OptimizedParallel/withIO/generate_matrices
+OptimizedParallel/withIO/weakscaling/generatematrix
+OptimizedParallel/withIO/weakscaling/matrix_a.dat
+OptimizedParallel/withIO/weakscaling/matrix_b.dat
+OptimizedParallel/withIO/weakscaling/result_matrix.dat
+OptimizedParallel/withIO/weakscaling/highlife-MPI-CUDA-exe
