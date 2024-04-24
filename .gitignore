@@ -76,3 +76,5 @@ OptimizedParallel/withIO/weakscaling/matrix_a.dat
 OptimizedParallel/withIO/weakscaling/matrix_b.dat
 OptimizedParallel/withIO/weakscaling/result_matrix.dat
 OptimizedParallel/withIO/weakscaling/highlife-MPI-CUDA-exe
+OptimizedParallel/withIO/matrixmult-MPI-CUDA-exe
+*/matrixmult-MPI-CUDA-exe
